@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+    </head>
+    <body>
+
+        <div style="display: flex;flex-direction: column;gap: 10px;">
+            <div id="GetChargePoint">
+                <input type="text" id="QRcode" placeholder="QRcode">
+                <button class="do">取得充電站資訊</button>
+            </div>
+            <div id="GetTokenbyBindingCard">
+                <button class="do">取得廠商驗證碼(Server)</button>
+                <input type="text" id="tokenForBindingCard">
+            </div>
+            <div id="SetOrder">
+                <div>
+                    <input name="eInvoiceType" type="radio" value="0">捐贈
+                    <input name="eInvoiceType" type="radio" value="1">手機載具
+                    <input name="eInvoiceType" type="radio" value="2">統一編號
+                </div>
+                <div><input id="CarruerNum" type="text" placeholder="手機載具"></div>
+                <div><input id="email" type="text" placeholder="信箱"></div>
+                <div><input id="CompanyTitle" type="text" placeholder="公司名稱"></div>
+                <div><input id="CustomerIdentifier" type="text"
+                        placeholder="統編"></div>
+                <button class="do">建立訂單</button>
+            </div>
+            <div id="step3">
+                <button class="do">取得綁定信用卡功能</button>
+            </div>
+            <div id="step4">
+                <div id="ECPayPayment"></div>
+            </div>
+            <div id="step5">
+                <button class="do">取得綁定信用卡代碼(BindCardPayToken)</button>
+                <input type="text" id="bindCardPayToken">
+            </div>
+            <div id="step6">
+                <button class="do">建立綁定信用卡交易(Server)</button>
+            </div>
+        </div>
+
+
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+        <script
+            src="https://ecpg-stage.ecpay.com.tw/Scripts/sdk-1.0.0.js?t=20210121100116"></script>
+        <script>        
+        $(function() {
+            const baseUrl = "https://api.charge.evoasis.com.tw";
+            var accessKey = "";
+
+            ECPayInitialize();
+            
+            function ECPayInitialize(){
+                var ServerType = ECPay.ServerType.Stage,
+                IsLoading = 1;
+                
+                ECPay.initialize(ServerType,IsLoading, (errMsg) => {
+
+                    console.log(errMsg);
+
+
+                })
+            }
+            
+            $("#GetChargePoint .do").click(() => {
+                var QRcode = $("#QRcode").val();
+                $.ajax({
+                    url: `${baseUrl}/ChargePoint/${QRcode}`,
+                    method: "GET",
+                    headers: {
+                        "access-key": accessKey
+                    }
+                })
+                .then((data) => {
+                    accessKey = data.sessionId ;
+                    console.log(data);
+                })
+                .fail((e) => {
+                    console.log(e)
+                })
+            })
+
+            $("#GetTokenbyBindingCard .do").click(() => {
+                $.ajax({
+                    url: `${baseUrl}/EcPay/GetTokenbyBindingCard`,
+                    method: "GET",
+                    headers: {
+                        "access-key": accessKey
+                    }
+                })
+                .then((data) => {
+                    console.log(data);
+                    $("#tokenForBindingCard").val(data.Token);
+                })
+                .fail((e) => {
+                    console.log(e)
+                })
+            })
+
+            $("#SetOrder .do").click(() => {
+                $.ajax({
+                    url: `${baseUrl}/Order/Set`,
+                    method: "POST",
+                    data: {
+                        EInvoiceType: $('input[name="eInvoiceType"]:checked').val(),
+                        CarruerNum: $("#CarruerNum").val(),
+                        email: $("#email").val(),
+                        CompanyTitle: $("#CompanyTitle").val(),
+                        CustomerIdentifier: $("#CustomerIdentifier").val()
+                    },
+                    headers: {
+                        "access-key": accessKey
+                    }
+                })
+                .then((data) => {
+                    console.log(data);
+                })
+                .fail((e) => {
+                    console.log(e)
+                })
+            })
+
+            $("#step3 .do").click(() => {
+                ECPay.addBindingCard(
+                    $("#tokenForBindingCard").val(),
+                    ECPay.Language.zhTW,
+                    (err) => {
+                        console.log(err);
+                    }
+                )
+            })
+
+            $("#step5 .do").click(() => {
+                ECPay.getBindCardPayToken((data) => {
+                    console.log(data);
+                    $("#bindCardPayToken").val(data.BindCardPayToken);
+                })
+            })
+            
+            $("#step6 .do").click(() => {
+                $.ajax({
+                    url: `${baseUrl}/EcPay/CreateBindCard`,
+                    method: "POST",
+                    data: {
+                        BindCardPayToken: $("#bindCardPayToken").val()
+                    },
+                    headers: {
+                        "access-key": accessKey
+                    }
+                })
+                .then((data) => {
+                    console.log(data);
+                })
+                .fail((e) => {
+                    console.log(e)
+                })
+            })
+        });
+
+
+    </script>
+    </body>
+</html>
